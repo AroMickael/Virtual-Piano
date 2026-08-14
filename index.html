@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Piano Virtuel Acoustique - Web Audio API</title>
+  <title>Piano Steinway Virtuel - Vrais Échantillons MP3</title>
+  
+  <!-- Intégration PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a1a1a">
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -20,6 +25,7 @@
     h1 { margin-bottom: 5px; }
     p { color: #aaa; margin-bottom: 20px; }
 
+    /* Panneau de contrôle */
     .controls {
       background: #2a2a2a;
       padding: 15px 25px;
@@ -29,25 +35,15 @@
       display: flex;
       gap: 20px;
       align-items: center;
-      flex-wrap: wrap;
     }
 
-    .control-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .status {
+      font-weight: bold;
+      color: #ffb74d;
     }
 
-    .controls label { font-weight: bold; }
-
-    .controls select {
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid #555;
-      background: #333;
-      color: white;
-      font-size: 0.95rem;
-      cursor: pointer;
+    .status.ready {
+      color: #81c784;
     }
 
     .btn-rec {
@@ -65,6 +61,7 @@
     #btn-stop:hover:not(:disabled) { background-color: #777; }
     .btn-rec:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    /* Piano UI */
     .piano {
       position: relative;
       display: flex;
@@ -133,22 +130,14 @@
 </head>
 <body>
 
-  <h1>Piano Virtuel JS - Son Acoustique</h1>
-  <p>Utilisez les touches de votre clavier AZERTY ou cliquez sur les notes</p>
+  <h1>Piano Steinway Grand Piano</h1>
+  <p>Sons réels échantillonnés • Touches AZERTY</p>
 
   <div class="controls">
-    <div class="control-group">
-      <label for="sound-mode">Modèle Sonore :</label>
-      <select id="sound-mode">
-        <option value="acoustic_piano" selected>🎹 Piano Acoustique Enrichi</option>
-        <option value="triangle">🎵 Marimba / Doux (Triangle)</option>
-        <option value="sine">🎷 Flûte (Sine)</option>
-        <option value="square">👾 Retro 8-bit (Square)</option>
-      </select>
-    </div>
+    <div id="loading-status" class="status">⏳ Cliquez ou appuyez sur une touche pour charger...</div>
 
-    <div class="control-group">
-      <button id="btn-record" class="btn-rec">🔴 Enregistrer</button>
+    <div>
+      <button id="btn-record" class="btn-rec" disabled>🔴 Enregistrer</button>
       <button id="btn-stop" class="btn-rec" disabled>⏹️ Arrêter & Télécharger</button> 
     </div>
   </div>
@@ -161,7 +150,7 @@
     <button class="key-white" data-key="g">G<br>Sol</button>
     <button class="key-white" data-key="h">H<br>La</button>
     <button class="key-white" data-key="j">J<br>Si</button>
-    <button class="key-white" data-key="k">K<br>Do</button>
+    <button class="key-white" data-key="k">K<br>Do 2</button>
 
     <button class="key-black" id="key-z" data-key="z">Z<br>Do#</button>
     <button class="key-black" id="key-e" data-key="e">E<br>Ré#</button>
@@ -171,47 +160,41 @@
   </div>
 
   <script>
+    // Dictionnaire avec l'index MIDI de chaque note (C4/Do = 60)
     const keyNotes = {
-      'q': { name: 'Do',   freq: 261.63 },
-      's': { name: 'Ré',   freq: 293.66 },
-      'd': { name: 'Mi',   freq: 329.63 },
-      'f': { name: 'Fa',   freq: 349.23 },
-      'g': { name: 'Sol',  freq: 392.00 },
-      'h': { name: 'La',   freq: 440.00 },
-      'j': { name: 'Si',   freq: 493.88 },
-      'k': { name: 'Do 2', freq: 523.25 },
-      'z': { name: 'Do#',  freq: 277.18 },
-      'e': { name: 'Ré#',  freq: 311.13 },
-      't': { name: 'Fa#',  freq: 369.99 },
-      'y': { name: 'Sol#', freq: 415.30 },
-      'u': { name: 'La#',  freq: 466.16 }
+      'q': { name: 'C4',  midi: 60 }, // Do 4
+      'z': { name: 'C#4', midi: 61 }, // Do# 4
+      's': { name: 'D4',  midi: 62 }, // Ré 4
+      'e': { name: 'D#4', midi: 63 }, // Ré# 4
+      'd': { name: 'E4',  midi: 64 }, // Mi 4
+      'f': { name: 'F4',  midi: 65 }, // Fa 4
+      't': { name: 'F#4', midi: 66 }, // Fa# 4
+      'g': { name: 'G4',  midi: 67 }, // Sol 4
+      'y': { name: 'G#4', midi: 68 }, // Sol# 4
+      'h': { name: 'A4',  midi: 69 }, // La 4
+      'u': { name: 'A#4', midi: 70 }, // La# 4
+      'j': { name: 'B4',  midi: 71 }, // Si 4
+      'k': { name: 'C5',  midi: 72 }  // Do 5
+    };
+
+    // Échantillons MP3 de référence issus d'un vrai Steinway
+    const sampleFiles = {
+      60: 'https://tonejs.github.io/audio/salamander/C4.mp3',
+      63: 'https://tonejs.github.io/audio/salamander/Ds4.mp3',
+      66: 'https://tonejs.github.io/audio/salamander/Fs4.mp3',
+      69: 'https://tonejs.github.io/audio/salamander/A4.mp3',
+      72: 'https://tonejs.github.io/audio/salamander/C5.mp3'
     };
 
     let audioContext;
     let masterGain;
-    let reverberator;
     let streamDestination;
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
 
-    const activeNotes = {};
-
-    // --- GÉNÉRATION D'UNE RÉVERBÉRATION ACOUSTIQUE EN JS ---
-    function createReverbBuffer(ctx) {
-      const sampleRate = ctx.sampleRate;
-      const length = sampleRate * 1.5; // 1.5 seconde de résonance de caisse
-      const impulse = ctx.createBuffer(2, length, sampleRate);
-      const left = impulse.getChannelData(0);
-      const right = impulse.getChannelData(1);
-
-      for (let i = 0; i < length; i++) {
-        const decay = Math.exp(-i / (sampleRate * 0.15));
-        left[i] = (Math.random() * 2 - 1) * decay;
-        right[i] = (Math.random() * 2 - 1) * decay;
-      }
-      return impulse;
-    }
+    const audioBuffers = {}; // Stocke les AudioBuffer décodés
+    const activeNotes = {};  // Stocke les nœuds actifs
 
     function initAudioContext() {
       if (!audioContext) {
@@ -223,118 +206,92 @@
 
       if (!masterGain) {
         masterGain = audioContext.createGain();
-        masterGain.gain.setValueAtTime(0.8, audioContext.currentTime);
-
-        // Nœud de réverbe pour la caisse de résonance du piano
-        reverberator = audioContext.createConvolver();
-        reverberator.buffer = createReverbBuffer(audioContext);
-
-        const wetGain = audioContext.createGain();
-        wetGain.gain.value = 0.25; // 25% de son réverbéré (bois)
-
-        // Routage : Master -> Direct + Master -> Reverb -> Direct
+        masterGain.gain.setValueAtTime(0.9, audioContext.currentTime);
         masterGain.connect(audioContext.destination);
-        masterGain.connect(reverberator);
-        reverberator.connect(wetGain);
-        wetGain.connect(audioContext.destination);
 
-        // Sortie vers l'enregistreur
         streamDestination = audioContext.createMediaStreamDestination();
         masterGain.connect(streamDestination);
-        wetGain.connect(streamDestination);
       }
     }
 
-    // --- DÉCLENCHEMENT DE LA NOTE ---
-    function noteOn(key, freq) {
+    // --- PRÉCHARGEMENT DES FICHIERS MP3 ---
+    async function loadSamples() {
       initAudioContext();
-      if (activeNotes[key]) return;
+      const statusEl = document.getElementById('loading-status');
+      statusEl.textContent = "⏳ Chargement des sons Steinway...";
 
-      const now = audioContext.currentTime;
-      const soundMode = document.getElementById('sound-mode').value;
+      try {
+        const promises = Object.entries(sampleFiles).map(async ([midi, url]) => {
+          const response = await fetch(url);
+          const arrayBuffer = await response.arrayBuffer();
+          const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          audioBuffers[midi] = decodedBuffer;
+        });
+
+        await Promise.all(promises);
+
+        statusEl.textContent = "🎹 Piano Steinway Prêt !";
+        statusEl.classList.add('ready');
+        document.getElementById('btn-record').disabled = false;
+      } catch (err) {
+        console.error("Erreur de chargement des MP3:", err);
+        statusEl.textContent = "❌ Erreur de chargement des MP3";
+      }
+    }
+
+    // Trouve l'échantillon MP3 le plus proche
+    function getClosestSample(targetMidi) {
+      const availableMidis = Object.keys(audioBuffers).map(Number);
+      return availableMidis.reduce((prev, curr) => 
+        Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
+      );
+    }
+
+    // --- DÉCLENCHEMENT DE LA NOTE MP3 ---
+    function noteOn(key) {
+      initAudioContext();
+      if (!keyNotes[key] || activeNotes[key]) return;
+
+      const targetMidi = keyNotes[key].midi;
+      const baseMidi = getClosestSample(targetMidi);
+      const buffer = audioBuffers[baseMidi];
+
+      if (!buffer) return;
+
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+
+      // Pitch Shift
+      const semitoneDifference = targetMidi - baseMidi;
+      source.playbackRate.value = Math.pow(2, semitoneDifference / 12);
 
       const noteGain = audioContext.createGain();
+      noteGain.gain.setValueAtTime(1.0, audioContext.currentTime);
 
-      if (soundMode === 'acoustic_piano') {
-        // --- SYNTHÈSE PIANO ACOUSTIQUE ---
-        // 1. Oscillateurs multiples (Harmoniques de la corde)
-        const osc1 = audioContext.createOscillator(); // Fondamentale
-        const osc2 = audioContext.createOscillator(); // Octave (+12 semitones)
-        const osc3 = audioContext.createOscillator(); // Quinte (+19 semitones)
-
-        osc1.type = 'triangle';
-        osc2.type = 'sine';
-        osc3.type = 'sine';
-
-        osc1.frequency.setValueAtTime(freq, now);
-        osc2.frequency.setValueAtTime(freq * 2, now);
-        osc3.frequency.setValueAtTime(freq * 3, now);
-
-        const g1 = audioContext.createGain(); g1.gain.value = 0.6;
-        const g2 = audioContext.createGain(); g2.gain.value = 0.25;
-        const g3 = audioContext.createGain(); g3.gain.value = 0.15;
-
-        osc1.connect(g1);
-        osc2.connect(g2);
-        osc3.connect(g3);
-
-        // 2. Filtre Passe-Bas Dynamique (Impact du marteau)
-        const filter = audioContext.createBiquadFilter();
-        filter.type = 'lowpass';
-        
-        // Attaque très brillante (marteau) puis étouffement naturel de la corde
-        filter.frequency.setValueAtTime(Math.min(freq * 8, 8000), now);
-        filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 1.5, 300), now + 0.8);
-
-        g1.connect(filter);
-        g2.connect(filter);
-        g3.connect(filter);
-        filter.connect(noteGain);
-
-        // 3. Enveloppe ADSR spécifique au piano
-        noteGain.gain.setValueAtTime(0, now);
-        noteGain.gain.linearRampToValueAtTime(0.5, now + 0.015); // Attaque rapide (15ms)
-        noteGain.gain.exponentialRampToValueAtTime(0.2, now + 0.3); // Décroissance
-
-        osc1.start(now); osc2.start(now); osc3.start(now);
-
-        activeNotes[key] = { oscs: [osc1, osc2, osc3], noteGain, isAcoustic: true };
-
-      } else {
-        // --- INSTRUMENTS SYNTHÉTIQUES CLASSIQUES ---
-        const osc = audioContext.createOscillator();
-        osc.type = soundMode;
-        osc.frequency.setValueAtTime(freq, now);
-
-        noteGain.gain.setValueAtTime(0, now);
-        noteGain.gain.linearRampToValueAtTime(0.4, now + 0.04);
-        noteGain.gain.exponentialRampToValueAtTime(0.16, now + 0.24);
-
-        osc.connect(noteGain);
-        osc.start(now);
-
-        activeNotes[key] = { oscs: [osc], noteGain, isAcoustic: false };
-      }
-
+      source.connect(noteGain);
       noteGain.connect(masterGain);
+
+      source.start(0);
+
+      activeNotes[key] = { source, noteGain };
     }
 
-    // --- EXTINCTION DE LA NOTE ---
+    // --- EXTINCTION DU SON ---
     function noteOff(key) {
       const note = activeNotes[key];
       if (!note) return;
 
       const now = audioContext.currentTime;
-      const releaseTime = 0.4;
+      const releaseTime = 0.5;
 
       note.noteGain.gain.cancelScheduledValues(now);
       note.noteGain.gain.setValueAtTime(note.noteGain.gain.value, now);
       note.noteGain.gain.exponentialRampToValueAtTime(0.0001, now + releaseTime);
 
-      note.oscs.forEach(osc => osc.stop(now + releaseTime));
+      note.source.stop(now + releaseTime);
 
       setTimeout(() => {
-        note.oscs.forEach(osc => osc.disconnect());
+        note.source.disconnect();
         note.noteGain.disconnect();
       }, releaseTime * 1000);
 
@@ -350,8 +307,8 @@
       audioChunks = [];
       mediaRecorder = new MediaRecorder(streamDestination.stream);
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunks.push(event.data);
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
       };
 
       mediaRecorder.onstop = () => {
@@ -359,7 +316,7 @@
         const audioUrl = URL.createObjectURL(audioBlob);
         const link = document.createElement('a');
         link.href = audioUrl;
-        link.download = `piano-acoustique-${Date.now()}.webm`;
+        link.download = `steinway-rec-${Date.now()}.webm`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -382,12 +339,12 @@
       }
     });
 
-    // --- EVENEMENTS CLAVIER ET SOURIS ---
+    // --- ÉVÉNEMENTS CLAVIER ET SOURIS ---
     document.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       const key = e.key.toLowerCase();
       if (keyNotes[key]) {
-        noteOn(key, keyNotes[key].freq);
+        noteOn(key);
         document.querySelector(`[data-key="${key}"]`)?.classList.add('active');
       }
     });
@@ -403,20 +360,29 @@
     document.querySelectorAll('.piano button').forEach(button => {
       const key = button.getAttribute('data-key');
       button.addEventListener('mousedown', () => {
-        if (keyNotes[key]) {
-          noteOn(key, keyNotes[key].freq);
-          button.classList.add('active');
-        }
+        noteOn(key);
+        button.classList.add('active');
       });
       const stopAction = () => {
-        if (keyNotes[key]) {
-          noteOff(key);
-          button.classList.remove('active');
-        }
+        noteOff(key);
+        button.classList.remove('active');
       };
       button.addEventListener('mouseup', stopAction);
       button.addEventListener('mouseleave', stopAction);
     });
+
+    // Lancement du chargement au premier survol ou clic
+    window.addEventListener('click', loadSamples, { once: true });
+    window.addEventListener('keydown', loadSamples, { once: true });
+
+    // --- ENREGISTREMENT DU SERVICE WORKER (Corrigé) ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('✅ Service Worker enregistré avec succès :', reg.scope))
+          .catch(err => console.error("❌ Échec de l'enregistrement du Service Worker :", err));
+      });
+    }
   </script>
 </body>
 </html>
