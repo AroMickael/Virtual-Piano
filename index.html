@@ -73,10 +73,11 @@
       font-size: 0.85rem;
     }
 
+    .btn-guide { background-color: #ffd54f; color: #111; }
+    .btn-guide:hover { background-color: #ffca28; }
     .btn-rec { background-color: #e53935; color: white; }
     .btn-stop { background-color: #555; color: white; }
     .btn-octave { background-color: #333; color: white; border: 1px solid #555; }
-    .btn-refresh { background-color: #f57c00; color: white; }
     .btn-install { background-color: #0288d1; color: white; display: none; }
     .btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -101,7 +102,7 @@
       cursor: pointer;
     }
 
-    /* Panneau de Partition Guidée */
+    /* Panneau de Partition Guidée (Caché par défaut) */
     .sheet-music-box {
       width: 100%;
       background: #181818;
@@ -110,6 +111,11 @@
       padding: 10px;
       box-sizing: border-box;
       text-align: center;
+      display: none; /* Masqué au départ */
+    }
+
+    .sheet-music-box.visible {
+      display: block; /* S'affiche au clic sur le bouton */
     }
 
     .sheet-title {
@@ -225,35 +231,18 @@
 <body>
 
   <h1>Piano Steinway Grand Pro</h1>
-  <p>Pédale (Espace) • Octave (Flèches ⬅️ ➡️) • Partitions Guidées</p>
+  <p>Pédale (Espace) • Octave (Flèches ⬅️ ➡️)</p>
 
   <div class="dashboard">
     <div class="status-bar">
       <div id="loading-status" class="status">⏳ Cliquez ou appuyez sur une touche...</div>
-      <button id="btn-reload-page" class="btn btn-refresh" title="Recharger la page">🔄 Actualiser l'App</button>
       <button id="btn-install" class="btn btn-install">📲 Installer l'App</button>
     </div>
 
-    <!-- Choix du Morceau -->
-    <div class="sheet-music-box">
-      <div class="control-row" style="margin-bottom:8px;">
-        <span class="sheet-title">🎼 Guide d'apprentissage :</span>
-        <select id="song-select">
-          <option value="none">-- Choisir un morceau --</option>
-          <option value="breakaway">Breakaway (Kelly Clarkson)</option>
-          <option value="clair_de_lune">Au clair de la lune</option>
-          <option value="hymne_joie">Hymne à la joie</option>
-          <option value="frere_jacques">Frère Jacques</option>
-          <option value="lettre_elise">Lettre à Élise (Extrait)</option>
-        </select>
-        <button id="btn-reset-song" class="btn btn-octave">↩️ Recommencer morceau</button>
-      </div>
-      <div id="notes-container" class="notes-display">
-        <span style="color:#777;">Sélectionnez un morceau ci-dessus pour afficher la partition guidée.</span>
-      </div>
-    </div>
-
     <div class="control-row">
+      <!-- Bouton pour afficher/masquer le guide -->
+      <button id="btn-toggle-guide" class="btn btn-guide">🎼 Guide d'apprentissage</button>
+
       <!-- Enregistreur -->
       <div>
         <button id="btn-record" class="btn btn-rec" disabled>🔴 Enregistrer</button>
@@ -266,6 +255,25 @@
         <button id="btn-octave-down" class="btn btn-octave">◀</button>
         <span id="octave-label" style="font-weight:bold; color:#ffb74d;">Oct 4</span>
         <button id="btn-octave-up" class="btn btn-octave">▶</button>
+      </div>
+    </div>
+
+    <!-- Panneau du Guide (Masqué par défaut) -->
+    <div id="sheet-box" class="sheet-music-box">
+      <div class="control-row" style="margin-bottom:8px;">
+        <span class="sheet-title">Sélectionner un morceau :</span>
+        <select id="song-select">
+          <option value="none">-- Choisir un morceau --</option>
+          <option value="breakaway">Breakaway (Kelly Clarkson)</option>
+          <option value="clair_de_lune">Au clair de la lune</option>
+          <option value="hymne_joie">Hymne à la joie</option>
+          <option value="frere_jacques">Frère Jacques</option>
+          <option value="lettre_elise">Lettre à Élise (Extrait)</option>
+        </select>
+        <button id="btn-reset-song" class="btn btn-octave">↩️ Recommencer</button>
+      </div>
+      <div id="notes-container" class="notes-display">
+        <span style="color:#777;">Choisissez une chanson dans la liste.</span>
       </div>
     </div>
   </div>
@@ -312,7 +320,6 @@
       72: 'https://tonejs.github.io/audio/salamander/C5.mp3'
     };
 
-    // --- PARTITIONS DISPONIBLES ---
     const songs = {
       breakaway: [
         { key: 'q', label: 'Do' }, { key: 'q', label: 'Do' }, { key: 's', label: 'Ré' }, { key: 'd', label: 'Mi' },
@@ -349,6 +356,14 @@
     let audioContext, masterGain, streamDestination, mediaRecorder;
     let audioChunks = [], isRecording = false, octaveShift = 0;
     const audioBuffers = {}, activeNotes = {};
+
+    // Afficher / Masquer le panneau avec le bouton
+    const btnToggleGuide = document.getElementById('btn-toggle-guide');
+    const sheetBox = document.getElementById('sheet-box');
+
+    btnToggleGuide.addEventListener('click', () => {
+      sheetBox.classList.toggle('visible');
+    });
 
     function initAudioContext() {
       if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -439,7 +454,7 @@
       document.querySelectorAll('.piano button').forEach(b => b.classList.remove('guide'));
 
       if (currentSong.length === 0) {
-        container.innerHTML = '<span style="color:#777;">Sélectionnez un morceau ci-dessus pour commencer.</span>';
+        container.innerHTML = '<span style="color:#777;">Choisissez une chanson dans la liste.</span>';
         return;
       }
 
@@ -481,11 +496,6 @@
     document.getElementById('btn-reset-song').addEventListener('click', () => {
       currentNoteIndex = 0;
       renderSong();
-    });
-
-    // Bouton de rafraîchissement d'un simple clic
-    document.getElementById('btn-reload-page').addEventListener('click', () => {
-      window.location.reload(true);
     });
 
     function updateOctave(delta) {
