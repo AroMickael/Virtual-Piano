@@ -3,63 +3,111 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Piano Steinway Virtuel - Vrais Échantillons MP3</title>
+  <title>Piano Steinway Virtuel Pro</title>
   
-  <!-- Intégration PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1a1a1a">
 
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background-color: #1a1a1a;
+      background-color: #121212;
       color: white;
       margin: 0;
+      user-select: none;
     }
 
-    h1 { margin-bottom: 5px; }
-    p { color: #aaa; margin-bottom: 20px; }
+    h1 { margin-bottom: 2px; }
+    p { color: #aaa; margin-bottom: 15px; font-size: 0.95rem; }
 
     /* Panneau de contrôle */
-    .controls {
-      background: #2a2a2a;
+    .dashboard {
+      background: #222;
       padding: 15px 25px;
-      border-radius: 10px;
+      border-radius: 12px;
       margin-bottom: 20px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
       display: flex;
-      gap: 20px;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+      max-width: 650px;
+      width: 90%;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
       align-items: center;
     }
 
     .status {
       font-weight: bold;
       color: #ffb74d;
+      font-size: 0.9rem;
     }
 
-    .status.ready {
-      color: #81c784;
+    .status.ready { color: #81c784; }
+
+    .control-row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
     }
 
-    .btn-rec {
-      padding: 8px 16px;
+    .btn {
+      padding: 8px 14px;
       border: none;
       border-radius: 6px;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s, opacity 0.2s;
+      transition: all 0.2s;
+      font-size: 0.85rem;
     }
 
-    #btn-record { background-color: #e53935; color: white; }
-    #btn-record:hover:not(:disabled) { background-color: #c62828; }
-    #btn-stop { background-color: #555; color: white; }
-    #btn-stop:hover:not(:disabled) { background-color: #777; }
-    .btn-rec:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-rec { background-color: #e53935; color: white; }
+    .btn-rec:hover:not(:disabled) { background-color: #c62828; }
+    .btn-stop { background-color: #555; color: white; }
+    .btn-stop:hover:not(:disabled) { background-color: #777; }
+    .btn-octave { background-color: #333; color: white; border: 1px solid #555; }
+    .btn-octave:hover { background-color: #444; }
+    .btn-install { background-color: #0288d1; color: white; display: none; }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Métronome & Sustain UI */
+    .widget-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1a1a1a;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      font-size: 0.85rem;
+    }
+
+    .pedal-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #555;
+      transition: background 0.1s;
+    }
+
+    .pedal-indicator.active {
+      background: #4caf50;
+      box-shadow: 0 0 8px #4caf50;
+    }
 
     /* Piano UI */
     .piano {
@@ -67,15 +115,15 @@
       display: flex;
       height: 220px;
       padding: 15px;
-      background: #333;
+      background: #2a2a2a;
       border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
     }
 
     .key-white {
       width: 55px;
       height: 100%;
-      background: white;
+      background: linear-gradient(to bottom, #fff 0%, #eee 100%);
       border: 1px solid #ccc;
       border-radius: 0 0 6px 6px;
       cursor: pointer;
@@ -86,7 +134,6 @@
       justify-content: center;
       padding-bottom: 12px;
       box-sizing: border-box;
-      user-select: none;
       transition: background 0.05s, transform 0.05s;
     }
 
@@ -98,7 +145,7 @@
     .key-black {
       width: 34px;
       height: 60%;
-      background: #111;
+      background: linear-gradient(to bottom, #333 0%, #000 100%);
       color: white;
       position: absolute;
       border-radius: 0 0 4px 4px;
@@ -111,13 +158,12 @@
       padding-bottom: 8px;
       box-sizing: border-box;
       z-index: 2;
-      user-select: none;
       box-shadow: 0 3px 5px rgba(0,0,0,0.5);
       transition: background 0.05s, transform 0.05s;
     }
 
     .key-black.active {
-      background: #444;
+      background: #555;
       transform: translateY(3px);
     }
 
@@ -126,19 +172,56 @@
     #key-t { left: 220px; }
     #key-y { left: 276px; }
     #key-u { left: 332px; }
+
+    .octave-display {
+      font-weight: bold;
+      color: #ffb74d;
+      min-width: 60px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Piano Steinway Grand Piano</h1>
-  <p>Sons réels échantillonnés • Touches AZERTY</p>
+  <h1>Piano Steinway Grand Pro</h1>
+  <p>Pédale (Espace) • Octave (Flèches ⬅️ ➡️) • Métronome</p>
 
-  <div class="controls">
-    <div id="loading-status" class="status">⏳ Cliquez ou appuyez sur une touche pour charger...</div>
+  <div class="dashboard">
+    <div class="status-bar">
+      <div id="loading-status" class="status">⏳ Cliquez ou appuyez sur une touche...</div>
+      <button id="btn-install" class="btn btn-install">📲 Installer l'App</button>
+    </div>
 
-    <div>
-      <button id="btn-record" class="btn-rec" disabled>🔴 Enregistrer</button>
-      <button id="btn-stop" class="btn-rec" disabled>⏹️ Arrêter & Télécharger</button> 
+    <div class="control-row">
+      <!-- Enregistreur -->
+      <div>
+        <button id="btn-record" class="btn btn-rec" disabled>🔴 Enregistrer</button>
+        <button id="btn-stop" class="btn btn-stop" disabled>⏹️ Télécharger</button> 
+      </div>
+
+      <!-- Selecteur d'octave -->
+      <div class="widget-box">
+        <span>Octave:</span>
+        <button id="btn-octave-down" class="btn btn-octave">◀</button>
+        <span id="octave-label" class="octave-display">Oct 4</span>
+        <button id="btn-octave-up" class="btn btn-octave">▶</button>
+      </div>
+
+      <!-- Pédale indicator -->
+      <div class="widget-box">
+        <span id="pedal-light" class="pedal-indicator"></span>
+        <span>Sustain (Espace)</span>
+      </div>
+    </div>
+
+    <div class="control-row">
+      <!-- Métronome -->
+      <div class="widget-box">
+        <span>⏱️ Métronome:</span>
+        <input type="range" id="metro-bpm" min="40" max="200" value="120">
+        <span id="bpm-val">120 BPM</span>
+        <button id="btn-metro" class="btn btn-octave">▶ Start</button>
+      </div>
     </div>
   </div>
 
@@ -160,24 +243,23 @@
   </div>
 
   <script>
-    // Dictionnaire avec l'index MIDI de chaque note (C4/Do = 60)
+    // Configuration des notes de base (Octave 4 par défaut)
     const keyNotes = {
-      'q': { name: 'C4',  midi: 60 }, // Do 4
-      'z': { name: 'C#4', midi: 61 }, // Do# 4
-      's': { name: 'D4',  midi: 62 }, // Ré 4
-      'e': { name: 'D#4', midi: 63 }, // Ré# 4
-      'd': { name: 'E4',  midi: 64 }, // Mi 4
-      'f': { name: 'F4',  midi: 65 }, // Fa 4
-      't': { name: 'F#4', midi: 66 }, // Fa# 4
-      'g': { name: 'G4',  midi: 67 }, // Sol 4
-      'y': { name: 'G#4', midi: 68 }, // Sol# 4
-      'h': { name: 'A4',  midi: 69 }, // La 4
-      'u': { name: 'A#4', midi: 70 }, // La# 4
-      'j': { name: 'B4',  midi: 71 }, // Si 4
-      'k': { name: 'C5',  midi: 72 }  // Do 5
+      'q': { name: 'C',  midi: 60 },
+      'z': { name: 'C#', midi: 61 },
+      's': { name: 'D',  midi: 62 },
+      'e': { name: 'D#', midi: 63 },
+      'd': { name: 'E',  midi: 64 },
+      'f': { name: 'F',  midi: 65 },
+      't': { name: 'F#', midi: 66 },
+      'g': { name: 'G',  midi: 67 },
+      'y': { name: 'G#', midi: 68 },
+      'h': { name: 'A',  midi: 69 },
+      'u': { name: 'A#', midi: 70 },
+      'j': { name: 'B',  midi: 71 },
+      'k': { name: 'C2', midi: 72 }
     };
 
-    // Échantillons MP3 de référence issus d'un vrai Steinway
     const sampleFiles = {
       60: 'https://tonejs.github.io/audio/salamander/C4.mp3',
       63: 'https://tonejs.github.io/audio/salamander/Ds4.mp3',
@@ -193,8 +275,12 @@
     let audioChunks = [];
     let isRecording = false;
 
-    const audioBuffers = {}; // Stocke les AudioBuffer décodés
-    const activeNotes = {};  // Stocke les nœuds actifs
+    let octaveShift = 0; // -2 à +2
+    let isSustainActive = false;
+    const sustainedNotesToRelease = new Set();
+
+    const audioBuffers = {};
+    const activeNotes = {};
 
     function initAudioContext() {
       if (!audioContext) {
@@ -203,7 +289,6 @@
       if (audioContext.state === 'suspended') {
         audioContext.resume();
       }
-
       if (!masterGain) {
         masterGain = audioContext.createGain();
         masterGain.gain.setValueAtTime(0.9, audioContext.currentTime);
@@ -214,7 +299,6 @@
       }
     }
 
-    // --- PRÉCHARGEMENT DES FICHIERS MP3 ---
     async function loadSamples() {
       initAudioContext();
       const statusEl = document.getElementById('loading-status');
@@ -224,22 +308,19 @@
         const promises = Object.entries(sampleFiles).map(async ([midi, url]) => {
           const response = await fetch(url);
           const arrayBuffer = await response.arrayBuffer();
-          const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
-          audioBuffers[midi] = decodedBuffer;
+          audioBuffers[midi] = await audioContext.decodeAudioData(arrayBuffer);
         });
 
         await Promise.all(promises);
-
         statusEl.textContent = "🎹 Piano Steinway Prêt !";
         statusEl.classList.add('ready');
         document.getElementById('btn-record').disabled = false;
       } catch (err) {
         console.error("Erreur de chargement des MP3:", err);
-        statusEl.textContent = "❌ Erreur de chargement des MP3";
+        statusEl.textContent = "❌ Erreur de chargement";
       }
     }
 
-    // Trouve l'échantillon MP3 le plus proche
     function getClosestSample(targetMidi) {
       const availableMidis = Object.keys(audioBuffers).map(Number);
       return availableMidis.reduce((prev, curr) => 
@@ -247,12 +328,12 @@
       );
     }
 
-    // --- DÉCLENCHEMENT DE LA NOTE MP3 ---
+    // --- JOUER UNE NOTE ---
     function noteOn(key) {
       initAudioContext();
       if (!keyNotes[key] || activeNotes[key]) return;
 
-      const targetMidi = keyNotes[key].midi;
+      const targetMidi = keyNotes[key].midi + (octaveShift * 12);
       const baseMidi = getClosestSample(targetMidi);
       const buffer = audioBuffers[baseMidi];
 
@@ -261,7 +342,6 @@
       const source = audioContext.createBufferSource();
       source.buffer = buffer;
 
-      // Pitch Shift
       const semitoneDifference = targetMidi - baseMidi;
       source.playbackRate.value = Math.pow(2, semitoneDifference / 12);
 
@@ -272,17 +352,21 @@
       noteGain.connect(masterGain);
 
       source.start(0);
-
       activeNotes[key] = { source, noteGain };
     }
 
-    // --- EXTINCTION DU SON ---
+    // --- ARRÊTER UNE NOTE (avec Sustain) ---
     function noteOff(key) {
       const note = activeNotes[key];
       if (!note) return;
 
+      if (isSustainActive) {
+        sustainedNotesToRelease.add(key);
+        return;
+      }
+
       const now = audioContext.currentTime;
-      const releaseTime = 0.5;
+      const releaseTime = 0.6;
 
       note.noteGain.gain.cancelScheduledValues(now);
       note.noteGain.gain.setValueAtTime(note.noteGain.gain.value, now);
@@ -296,9 +380,82 @@
       }, releaseTime * 1000);
 
       delete activeNotes[key];
+      sustainedNotesToRelease.delete(key);
     }
 
-    // --- ENREGISTREUR AUDIO ---
+    // --- PÉDALE DE SUSTAIN (Espace) ---
+    function setSustain(active) {
+      isSustainActive = active;
+      const light = document.getElementById('pedal-light');
+      
+      if (active) {
+        light.classList.add('active');
+      } else {
+        light.classList.remove('active');
+        // Relâcher toutes les notes en attente
+        sustainedNotesToRelease.forEach(key => noteOff(key));
+      }
+    }
+
+    // --- CHANGEMENT D'OCTAVE ---
+    function updateOctave(delta) {
+      octaveShift = Math.max(-2, Math.min(2, octaveShift + delta));
+      document.getElementById('octave-label').textContent = `Oct ${4 + octaveShift}`;
+    }
+
+    document.getElementById('btn-octave-down').addEventListener('click', () => updateOctave(-1));
+    document.getElementById('btn-octave-up').addEventListener('click', () => updateOctave(1));
+
+    // --- MÉTRO NOME ---
+    let metroInterval;
+    let isMetroRunning = false;
+    const btnMetro = document.getElementById('btn-metro');
+    const metroBpmInput = document.getElementById('metro-bpm');
+    const bpmValDisplay = document.getElementById('bpm-val');
+
+    metroBpmInput.addEventListener('input', (e) => {
+      bpmValDisplay.textContent = `${e.target.value} BPM`;
+      if (isMetroRunning) {
+        stopMetronome();
+        startMetronome();
+      }
+    });
+
+    function playClick() {
+      initAudioContext();
+      const osc = audioContext.createOscillator();
+      const clickGain = audioContext.createGain();
+      osc.frequency.value = 1000;
+      clickGain.gain.setValueAtTime(0.3, audioContext.currentTime);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.05);
+
+      osc.connect(clickGain);
+      clickGain.connect(masterGain);
+      osc.start();
+      osc.stop(audioContext.currentTime + 0.05);
+    }
+
+    function startMetronome() {
+      const bpm = parseInt(metroBpmInput.value, 10);
+      const intervalMs = (60 / bpm) * 1000;
+      playClick();
+      metroInterval = setInterval(playClick, intervalMs);
+      isMetroRunning = true;
+      btnMetro.textContent = "⏹ Stop";
+    }
+
+    function stopMetronome() {
+      clearInterval(metroInterval);
+      isMetroRunning = false;
+      btnMetro.textContent = "▶ Start";
+    }
+
+    btnMetro.addEventListener('click', () => {
+      if (isMetroRunning) stopMetronome();
+      else startMetronome();
+    });
+
+    // --- ENREGISTREUR ---
     const btnRecord = document.getElementById('btn-record');
     const btnStop = document.getElementById('btn-stop');
 
@@ -339,9 +496,21 @@
       }
     });
 
-    // --- ÉVÉNEMENTS CLAVIER ET SOURIS ---
+    // --- ÉVÉNEMENTS CLAVIER ---
     document.addEventListener('keydown', (e) => {
       if (e.repeat) return;
+      
+      // Barre d'espace = Pédale
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setSustain(true);
+        return;
+      }
+
+      // Flèches gauche/droite = Changement d'octave
+      if (e.code === 'ArrowLeft') { updateOctave(-1); return; }
+      if (e.code === 'ArrowRight') { updateOctave(1); return; }
+
       const key = e.key.toLowerCase();
       if (keyNotes[key]) {
         noteOn(key);
@@ -350,6 +519,11 @@
     });
 
     document.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') {
+        setSustain(false);
+        return;
+      }
+
       const key = e.key.toLowerCase();
       if (keyNotes[key]) {
         noteOff(key);
@@ -357,6 +531,7 @@
       }
     });
 
+    // Souris / Touch
     document.querySelectorAll('.piano button').forEach(button => {
       const key = button.getAttribute('data-key');
       button.addEventListener('mousedown', () => {
@@ -371,16 +546,35 @@
       button.addEventListener('mouseleave', stopAction);
     });
 
-    // Lancement du chargement au premier survol ou clic
     window.addEventListener('click', loadSamples, { once: true });
     window.addEventListener('keydown', loadSamples, { once: true });
 
-    // --- ENREGISTREMENT DU SERVICE WORKER (Corrigé) ---
+    // --- BOUTON D'INSTALLATION PWA ---
+    let deferredPrompt;
+    const btnInstall = document.getElementById('btn-install');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnInstall.style.display = 'block';
+    });
+
+    btnInstall.addEventListener('click', () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => {
+          deferredPrompt = null;
+          btnInstall.style.display = 'none';
+        });
+      }
+    });
+
+    // Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('✅ Service Worker enregistré avec succès :', reg.scope))
-          .catch(err => console.error("❌ Échec de l'enregistrement du Service Worker :", err));
+          .then(reg => console.log('✅ Service Worker prêt :', reg.scope))
+          .catch(err => console.error("❌ Échec Service Worker :", err));
       });
     }
   </script>
