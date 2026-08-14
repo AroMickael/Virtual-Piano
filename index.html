@@ -182,7 +182,6 @@
 
     .key-white.active { background: #bbb; transform: translateY(3px); }
     
-    /* Guide lumineux pour touches blanches */
     .key-white.guide {
       background: #ffe082 !important;
       box-shadow: 0 0 15px #ffd54f;
@@ -210,7 +209,6 @@
 
     .key-black.active { background: #555; transform: translateY(3px); }
 
-    /* Guide lumineux pour touches noires */
     .key-black.guide {
       background: #ffb300 !important;
       box-shadow: 0 0 15px #ffb300;
@@ -240,6 +238,7 @@
         <span class="sheet-title">🎼 Guide d'apprentissage :</span>
         <select id="song-select">
           <option value="none">-- Choisir un morceau --</option>
+          <option value="breakaway">Breakaway (Kelly Clarkson)</option>
           <option value="clair_de_lune">Au clair de la lune</option>
           <option value="hymne_joie">Hymne à la joie</option>
           <option value="frere_jacques">Frère Jacques</option>
@@ -313,6 +312,12 @@
 
     // --- PARTITIONS DISPONIBLES ---
     const songs = {
+      breakaway: [
+        { key: 'q', label: 'Do' }, { key: 'q', label: 'Do' }, { key: 's', label: 'Ré' }, { key: 'd', label: 'Mi' },
+        { key: 'd', label: 'Mi' }, { key: 's', label: 'Ré' }, { key: 'q', label: 'Do' }, { key: 's', label: 'Ré' },
+        { key: 'd', label: 'Mi' }, { key: 'g', label: 'Sol' }, { key: 'f', label: 'Fa' }, { key: 'd', label: 'Mi' },
+        { key: 's', label: 'Ré' }, { key: 'q', label: 'Do' }
+      ],
       clair_de_lune: [
         { key: 'q', label: 'Do' }, { key: 'q', label: 'Do' }, { key: 'q', label: 'Do' }, { key: 's', label: 'Ré' },
         { key: 'd', label: 'Mi' }, { key: 's', label: 'Ré' }, { key: 'q', label: 'Do' }, { key: 'd', label: 'Mi' },
@@ -403,7 +408,6 @@
 
       activeNotes[key] = { source, noteGain };
 
-      // --- VERIFICATION PARTITION GUIDEE ---
       if (currentSong.length > 0 && currentNoteIndex < currentSong.length) {
         if (key === currentSong[currentNoteIndex].key) {
           currentNoteIndex++;
@@ -428,7 +432,6 @@
       delete activeNotes[key];
     }
 
-    // --- GESTION DU GUIDE ET DES PARTITIONS ---
     function renderSong() {
       const container = document.getElementById('notes-container');
       document.querySelectorAll('.piano button').forEach(b => b.classList.remove('guide'));
@@ -453,7 +456,6 @@
           badge.classList.add('done');
         } else if (idx === currentNoteIndex) {
           badge.classList.add('target');
-          // Allumer la touche correspondante sur le clavier
           const keyButton = document.querySelector(`[data-key="${note.key}"]`);
           if (keyButton) keyButton.classList.add('guide');
         }
@@ -479,7 +481,6 @@
       renderSong();
     });
 
-    // --- OCTAVES ---
     function updateOctave(delta) {
       octaveShift = Math.max(-2, Math.min(2, octaveShift + delta));
       document.getElementById('octave-label').textContent = `Oct ${4 + octaveShift}`;
@@ -487,7 +488,6 @@
     document.getElementById('btn-octave-down').addEventListener('click', () => updateOctave(-1));
     document.getElementById('btn-octave-up').addEventListener('click', () => updateOctave(1));
 
-    // --- ENREGISTREMENT ---
     const btnRecord = document.getElementById('btn-record');
     const btnStop = document.getElementById('btn-stop');
 
@@ -523,7 +523,6 @@
       }
     });
 
-    // --- EVENEMENTS CLAVIER ET SOURIS ---
     document.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       if (e.code === 'ArrowLeft') { updateOctave(-1); return; }
@@ -561,7 +560,6 @@
     window.addEventListener('click', loadSamples, { once: true });
     window.addEventListener('keydown', loadSamples, { once: true });
 
-    // --- PWA SERVICE WORKER ---
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js');
