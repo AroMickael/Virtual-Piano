@@ -76,6 +76,7 @@
     .btn-rec { background-color: #e53935; color: white; }
     .btn-stop { background-color: #555; color: white; }
     .btn-octave { background-color: #333; color: white; border: 1px solid #555; }
+    .btn-refresh { background-color: #f57c00; color: white; }
     .btn-install { background-color: #0288d1; color: white; display: none; }
     .btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
@@ -229,6 +230,7 @@
   <div class="dashboard">
     <div class="status-bar">
       <div id="loading-status" class="status">⏳ Cliquez ou appuyez sur une touche...</div>
+      <button id="btn-reload-page" class="btn btn-refresh" title="Recharger la page">🔄 Actualiser l'App</button>
       <button id="btn-install" class="btn btn-install">📲 Installer l'App</button>
     </div>
 
@@ -244,7 +246,7 @@
           <option value="frere_jacques">Frère Jacques</option>
           <option value="lettre_elise">Lettre à Élise (Extrait)</option>
         </select>
-        <button id="btn-reset-song" class="btn btn-octave">🔄 Recommencer</button>
+        <button id="btn-reset-song" class="btn btn-octave">↩️ Recommencer morceau</button>
       </div>
       <div id="notes-container" class="notes-display">
         <span style="color:#777;">Sélectionnez un morceau ci-dessus pour afficher la partition guidée.</span>
@@ -479,6 +481,11 @@
     document.getElementById('btn-reset-song').addEventListener('click', () => {
       currentNoteIndex = 0;
       renderSong();
+    });
+
+    // Bouton de rafraîchissement d'un simple clic
+    document.getElementById('btn-reload-page').addEventListener('click', () => {
+      window.location.reload(true);
     });
 
     function updateOctave(delta) {
