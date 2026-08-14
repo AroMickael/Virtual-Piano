@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Piano Virtuel Acoustique - Web Audio API</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-color: #1a1a1a;
+      color: white;
+      margin: 0;
+    }
+
+    h1 { margin-bottom: 5px; }
+    p { color: #aaa; margin-bottom: 20px; }
+
+    .controls {
+      background: #2a2a2a;
+      padding: 15px 25px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .controls label { font-weight: bold; }
+
+    .controls select {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #555;
+      background: #333;
+      color: white;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .btn-rec {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    #btn-record { background-color: #e53935; color: white; }
+    #btn-record:hover:not(:disabled) { background-color: #c62828; }
+    #btn-stop { background-color: #555; color: white; }
+    #btn-stop:hover:not(:disabled) { background-color: #777; }
+    .btn-rec:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .piano {
+      position: relative;
+      display: flex;
+      height: 220px;
+      padding: 15px;
+      background: #333;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .key-white {
+      width: 55px;
+      height: 100%;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 0 0 6px 6px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #333;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 12px;
+      box-sizing: border-box;
+      user-select: none;
+      transition: background 0.05s, transform 0.05s;
+    }
+
+    .key-white.active {
+      background: #ddd;
+      transform: translateY(3px);
+    }
+
+    .key-black {
+      width: 34px;
+      height: 60%;
+      background: #111;
+      color: white;
+      position: absolute;
+      border-radius: 0 0 4px 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: bold;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 8px;
+      box-sizing: border-box;
+      z-index: 2;
+      user-select: none;
+      box-shadow: 0 3px 5px rgba(0,0,0,0.5);
+      transition: background 0.05s, transform 0.05s;
+    }
+
+    .key-black.active {
+      background: #444;
+      transform: translateY(3px);
+    }
+
+    #key-z { left: 52px; }
+    #key-e { left: 108px; }
+    #key-t { left: 220px; }
+    #key-y { left: 276px; }
+    #key-u { left: 332px; }
+  </style>
+</head>
+<body>
+
+  <h1>Piano Virtuel JS - Son Acoustique</h1>
+  <p>Utilisez les touches de votre clavier AZERTY ou cliquez sur les notes</p>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="sound-mode">Modèle Sonore :</label>
+      <select id="sound-mode">
+        <option value="acoustic_piano" selected>🎹 Piano Acoustique Enrichi</option>
+        <option value="triangle">🎵 Marimba / Doux (Triangle)</option>
+        <option value="sine">🎷 Flûte (Sine)</option>
+        <option value="square">👾 Retro 8-bit (Square)</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <button id="btn-record" class="btn-rec">🔴 Enregistrer</button>
+      <button id="btn-stop" class="btn-rec" disabled>⏹️ Arrêter & Télécharger</button> 
+    </div>
+  </div>
+
+  <div class="piano">
+    <button class="key-white" data-key="q">Q<br>Do</button>
+    <button class="key-white" data-key="s">S<br>Ré</button>
+    <button class="key-white" data-key="d">D<br>Mi</button>
+    <button class="key-white" data-key="f">F<br>Fa</button>
+    <button class="key-white" data-key="g">G<br>Sol</button>
+    <button class="key-white" data-key="h">H<br>La</button>
+    <button class="key-white" data-key="j">J<br>Si</button>
+    <button class="key-white" data-key="k">K<br>Do</button>
+
+    <button class="key-black" id="key-z" data-key="z">Z<br>Do#</button>
+    <button class="key-black" id="key-e" data-key="e">E<br>Ré#</button>
+    <button class="key-black" id="key-t" data-key="t">T<br>Fa#</button>
+    <button class="key-black" id="key-y" data-key="y">Y<br>Sol#</button>
+    <button class="key-black" id="key-u" data-key="u">U<br>La#</button>
+  </div>
+
+  <script>
+    const keyNotes = {
+      'q': { name: 'Do',   freq: 261.63 },
+      's': { name: 'Ré',   freq: 293.66 },
+      'd': { name: 'Mi',   freq: 329.63 },
+      'f': { name: 'Fa',   freq: 349.23 },
+      'g': { name: 'Sol',  freq: 392.00 },
+      'h': { name: 'La',   freq: 440.00 },
+      'j': { name: 'Si',   freq: 493.88 },
+      'k': { name: 'Do 2', freq: 523.25 },
+      'z': { name: 'Do#',  freq: 277.18 },
+      'e': { name: 'Ré#',  freq: 311.13 },
+      't': { name: 'Fa#',  freq: 369.99 },
+      'y': { name: 'Sol#', freq: 415.30 },
+      'u': { name: 'La#',  freq: 466.16 }
+    };
+
+    let audioContext;
+    let masterGain;
+    let reverberator;
+    let streamDestination;
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    const activeNotes = {};
+
+    // --- GÉNÉRATION D'UNE RÉVERBÉRATION ACOUSTIQUE EN JS ---
+    function createReverbBuffer(ctx) {
+      const sampleRate = ctx.sampleRate;
+      const length = sampleRate * 1.5; // 1.5 seconde de résonance de caisse
+      const impulse = ctx.createBuffer(2, length, sampleRate);
+      const left = impulse.getChannelData(0);
+      const right = impulse.getChannelData(1);
+
+      for (let i = 0; i < length; i++) {
+        const decay = Math.exp(-i / (sampleRate * 0.15));
+        left[i] = (Math.random() * 2 - 1) * decay;
+        right[i] = (Math.random() * 2 - 1) * decay;
+      }
+      return impulse;
+    }
+
+    function initAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+
+      if (!masterGain) {
+        masterGain = audioContext.createGain();
+        masterGain.gain.setValueAtTime(0.8, audioContext.currentTime);
+
+        // Nœud de réverbe pour la caisse de résonance du piano
+        reverberator = audioContext.createConvolver();
+        reverberator.buffer = createReverbBuffer(audioContext);
+
+        const wetGain = audioContext.createGain();
+        wetGain.gain.value = 0.25; // 25% de son réverbéré (bois)
+
+        // Routage : Master -> Direct + Master -> Reverb -> Direct
+        masterGain.connect(audioContext.destination);
+        masterGain.connect(reverberator);
+        reverberator.connect(wetGain);
+        wetGain.connect(audioContext.destination);
+
+        // Sortie vers l'enregistreur
+        streamDestination = audioContext.createMediaStreamDestination();
+        masterGain.connect(streamDestination);
+        wetGain.connect(streamDestination);
+      }
+    }
+
+    // --- DÉCLENCHEMENT DE LA NOTE ---
+    function noteOn(key, freq) {
+      initAudioContext();
+      if (activeNotes[key]) return;
+
+      const now = audioContext.currentTime;
+      const soundMode = document.getElementById('sound-mode').value;
+
+      const noteGain = audioContext.createGain();
+
+      if (soundMode === 'acoustic_piano') {
+        // --- SYNTHÈSE PIANO ACOUSTIQUE ---
+        // 1. Oscillateurs multiples (Harmoniques de la corde)
+        const osc1 = audioContext.createOscillator(); // Fondamentale
+        const osc2 = audioContext.createOscillator(); // Octave (+12 semitones)
+        const osc3 = audioContext.createOscillator(); // Quinte (+19 semitones)
+
+        osc1.type = 'triangle';
+        osc2.type = 'sine';
+        osc3.type = 'sine';
+
+        osc1.frequency.setValueAtTime(freq, now);
+        osc2.frequency.setValueAtTime(freq * 2, now);
+        osc3.frequency.setValueAtTime(freq * 3, now);
+
+        const g1 = audioContext.createGain(); g1.gain.value = 0.6;
+        const g2 = audioContext.createGain(); g2.gain.value = 0.25;
+        const g3 = audioContext.createGain(); g3.gain.value = 0.15;
+
+        osc1.connect(g1);
+        osc2.connect(g2);
+        osc3.connect(g3);
+
+        // 2. Filtre Passe-Bas Dynamique (Impact du marteau)
+        const filter = audioContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        
+        // Attaque très brillante (marteau) puis étouffement naturel de la corde
+        filter.frequency.setValueAtTime(Math.min(freq * 8, 8000), now);
+        filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 1.5, 300), now + 0.8);
+
+        g1.connect(filter);
+        g2.connect(filter);
+        g3.connect(filter);
+        filter.connect(noteGain);
+
+        // 3. Enveloppe ADSR spécifique au piano
+        noteGain.gain.setValueAtTime(0, now);
+        noteGain.gain.linearRampToValueAtTime(0.5, now + 0.015); // Attaque rapide (15ms)
+        noteGain.gain.exponentialRampToValueAtTime(0.2, now + 0.3); // Décroissance
+
+        osc1.start(now); osc2.start(now); osc3.start(now);
+
+        activeNotes[key] = { oscs: [osc1, osc2, osc3], noteGain, isAcoustic: true };
+
+      } else {
+        // --- INSTRUMENTS SYNTHÉTIQUES CLASSIQUES ---
+        const osc = audioContext.createOscillator();
+        osc.type = soundMode;
+        osc.frequency.setValueAtTime(freq, now);
+
+        noteGain.gain.setValueAtTime(0, now);
+        noteGain.gain.linearRampToValueAtTime(0.4, now + 0.04);
+        noteGain.gain.exponentialRampToValueAtTime(0.16, now + 0.24);
+
+        osc.connect(noteGain);
+        osc.start(now);
+
+        activeNotes[key] = { oscs: [osc], noteGain, isAcoustic: false };
+      }
+
+      noteGain.connect(masterGain);
+    }
+
+    // --- EXTINCTION DE LA NOTE ---
+    function noteOff(key) {
+      const note = activeNotes[key];
+      if (!note) return;
+
+      const now = audioContext.currentTime;
+      const releaseTime = 0.4;
+
+      note.noteGain.gain.cancelScheduledValues(now);
+      note.noteGain.gain.setValueAtTime(note.noteGain.gain.value, now);
+      note.noteGain.gain.exponentialRampToValueAtTime(0.0001, now + releaseTime);
+
+      note.oscs.forEach(osc => osc.stop(now + releaseTime));
+
+      setTimeout(() => {
+        note.oscs.forEach(osc => osc.disconnect());
+        note.noteGain.disconnect();
+      }, releaseTime * 1000);
+
+      delete activeNotes[key];
+    }
+
+    // --- ENREGISTREUR AUDIO ---
+    const btnRecord = document.getElementById('btn-record');
+    const btnStop = document.getElementById('btn-stop');
+
+    btnRecord.addEventListener('click', () => {
+      initAudioContext();
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(streamDestination.stream);
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const link = document.createElement('a');
+        link.href = audioUrl;
+        link.download = `piano-acoustique-${Date.now()}.webm`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
+      mediaRecorder.start();
+      isRecording = true;
+      btnRecord.disabled = true;
+      btnStop.disabled = false;
+      btnRecord.textContent = "⏺️ Enregistrement...";
+    });
+
+    btnStop.addEventListener('click', () => {
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        btnRecord.disabled = false;
+        btnStop.disabled = true;
+        btnRecord.textContent = "🔴 Enregistrer";
+      }
+    });
+
+    // --- EVENEMENTS CLAVIER ET SOURIS ---
+    document.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      const key = e.key.toLowerCase();
+      if (keyNotes[key]) {
+        noteOn(key, keyNotes[key].freq);
+        document.querySelector(`[data-key="${key}"]`)?.classList.add('active');
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      const key = e.key.toLowerCase();
+      if (keyNotes[key]) {
+        noteOff(key);
+        document.querySelector(`[data-key="${key}"]`)?.classList.remove('active');
+      }
+    });
+
+    document.querySelectorAll('.piano button').forEach(button => {
+      const key = button.getAttribute('data-key');
+      button.addEventListener('mousedown', () => {
+        if (keyNotes[key]) {
+          noteOn(key, keyNotes[key].freq);
+          button.classList.add('active');
+        }
+      });
+      const stopAction = () => {
+        if (keyNotes[key]) {
+          noteOff(key);
+          button.classList.remove('active');
+        }
+      };
+      button.addEventListener('mouseup', stopAction);
+      button.addEventListener('mouseleave', stopAction);
+    });
+  </script>
+</body>
+</html>
