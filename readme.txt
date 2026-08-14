@@ -1,0 +1,1 @@
+press ctrl+F5 to open the learning guide
